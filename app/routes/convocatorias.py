@@ -1,63 +1,105 @@
-from fastapi import APIRouter, HTTPException
-from typing import List
-from app.models import Convocatoria
-from app.services.convocatorias_service import ConvocatoriaService
+from fastapi import APIRouter, HTTPException, Query, Body, status
+from typing import List, Optional
+from bson import ObjectId
+
+from ..models import Convocatoria, ConvocatoriaCreate, ConvocatoriaUpdate
+from ..database import get_convocatoria_collection
 
 router = APIRouter(
     prefix="/convocatorias",
-    tags=["Convocatorias"],
-    responses={404: {"description": "No encontrado"}}
+    tags=["Convocatorias"]
 )
 
-@router.post("/", summary="Crear una nueva convocatoria", response_description="Convocatoria creada")
-async def creaar_convocatoria(convocatoria: Convocatoria):
-    """
-    Crea una nueva convocatoria de movilidad académica.
-    """
+collection = get_convocatoria_collection()
+
+# Endpoint para crear (sin cambios)
+@router.post("/", response_model=Convocatoria, status_code=status.HTTP_201_CREATED)
+async def create_convocatoria(convocatoria: ConvocatoriaCreate = Body(...)):
     convocatoria_dict = convocatoria.dict(by_alias=True)
-    success = await ConvocatoriaService.crear(convocatoria_dict)
-    if not success:
-        raise HTTPException(status_code=400, detail="Convocatoria ya existe")
-    return {"mensaje": "Convocatoria creada exitosamente"}
+    result = await collection.insert_one(convocatoria_dict)
+    new_convocatoria = await collection.find_one({"_id": result.inserted_id})
+    return new_convocatoria
 
-@router.get("/", response_model=List[Convocatoria], summary="Listar convocatorias", response_description="Lista de convocatorias")
-async def listar_convocatorias():
-    """
-    Lista todas las convocatorias existentes.
-    """
-    return await ConvocatoriaService.listar()
+# Endpoint GET con filtros mejorados
+@router.get("/", response_model=List[Convocatoria])
+async def get_convocatorias(
+    q: Optional[str] = Query(None, min_length=3, description="Búsqueda por texto en institución, país o propiedades."),
+    country: Optional[str] = Query(None, description="Filtrar por país (exacto, case-insensitive)"),
+    language: Optional[str] = Query(None, description="Filtrar por idioma (debe estar en la lista de idiomas)"),
+    state: Optional[str] = Query(None, description="Filtrar por estado (Vigente/No Vigente)"),
+    agreement_type: Optional[str] = Query(None, description="Filtrar por tipo de convenio"),
+    subscription_level: Optional[str] = Query(None, description="Filtrar por nivel de suscripción (ej. Facultad de Ciencias Humanas)"),
+    limit: int = Query(20, gt=0, le=200, description="Número de resultados a devolver"),
+    skip: int = Query(0, ge=0, description="Número de resultados a omitir para paginación")
+):
+    query = {}
 
-@router.get("/{convocatoria_id}", response_model=Convocatoria, summary="Obtener convocatoria por ID", response_description="Convocatoria encontrada")
-async def obtener_convocatoria(convocatoria_id: str):
-    """
-    Obtiene el detalle de una convocatoria específica por su ID.
-    """
-    convocatoria = await ConvocatoriaService.obtener(convocatoria_id)
-    if not convocatoria:
-        raise HTTPException(status_code=404, detail="Convocatoria no encontrada")
-    return convocatoria
+    if q:
+        query["$text"] = {"$search": q}
 
-@router.put("/{convocatoria_id}", summary="Actualizar convocatoria", response_description="Convocatoria actualizada")
-async def actualizar_convocatoria(convocatoria_id: str, convocatoria_actualizada: Convocatoria):
-    """
-    Actualiza los datos de una convocatoria existente.
-    """
-    convocatoria_existente = await ConvocatoriaService.obtener(convocatoria_id)
-    if not convocatoria_existente:
-        raise HTTPException(status_code=404, detail="Convocatoria no encontrada")
-    convocatoria_actualizada.owner = convocatoria_existente.owner
-    convocatoria_dict = convocatoria_actualizada.dict(by_alias=True)
-    convocatoria_bd = Convocatoria(**convocatoria_dict)
-    await ConvocatoriaService.actualizar(convocatoria_id, convocatoria_bd)
-    return {"mensaje": "Convocatoria actualizada exitosamente"}
+    if country:
+        query["country"] = {"$regex": f"^{country}$", "$options": "i"}
 
-@router.delete("/{convocatoria_id}", summary="Eliminar convocatoria", response_description="Convocatoria eliminada")
-async def eliminar_convocatoria(convocatoria_id: str):
-    """
-    Elimina una convocatoria existente.
-    """
-    convocatoria_existente = await ConvocatoriaService.obtener(convocatoria_id)
-    if not convocatoria_existente:
-        raise HTTPException(status_code=404, detail="Convocatoria no encontrada")
-    await ConvocatoriaService.eliminar(convocatoria_id)
-    return {"mensaje": "Convocatoria eliminada exitosamente"}
+    if language:
+        # Busca si el idioma está presente en el array 'languages'
+        query["languages"] = {"$regex": language, "$options": "i"}
+
+    if state:
+        query["state"] = {"$regex": f"^{state}$", "$options": "i"}
+        
+    if agreement_type:
+        query["agreementType"] = {"$regex": f"^{agreement_type}$", "$options": "i"}
+    
+    if subscription_level:
+         query["subscriptionLevel"] = {"$regex": subscription_level, "$options": "i"}
+
+    cursor = collection.find(query).skip(skip).limit(limit)
+    results = await cursor.to_list(length=limit)
+    return results
+
+# Endpoint para obtener una convocatoria por ID (sin cambios)
+@router.get("/{id}", response_model=Convocatoria)
+async def get_convocatoria_by_id(id: str):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="ID de convocatoria inválido")
+        
+    convocatoria = await collection.find_one({"_id": ObjectId(id)})
+    if convocatoria:
+        return convocatoria
+    raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+
+# ¡NUEVO! Endpoint para actualizar una convocatoria (PATCH)
+@router.patch("/{id}", response_model=Convocatoria)
+async def update_convocatoria(id: str, convocatoria_update: ConvocatoriaUpdate = Body(...)):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="ID de convocatoria inválido")
+
+    # Excluye los campos que no se enviaron en el request para no sobreescribir con None
+    update_data = {k: v for k, v in convocatoria_update.dict(by_alias=True).items() if v is not None}
+
+    if len(update_data) < 1:
+        raise HTTPException(status_code=400, detail="No se enviaron datos para actualizar")
+
+    result = await collection.update_one(
+        {"_id": ObjectId(id)},
+        {"$set": update_data}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+
+    updated_convocatoria = await collection.find_one({"_id": ObjectId(id)})
+    return updated_convocatoria
+
+# ¡NUEVO! Endpoint para eliminar una convocatoria
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_convocatoria(id: str):
+    if not ObjectId.is_valid(id):
+        raise HTTPException(status_code=400, detail="ID de convocatoria inválido")
+        
+    result = await collection.delete_one({"_id": ObjectId(id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+
+    return
