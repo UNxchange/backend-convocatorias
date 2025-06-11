@@ -16,7 +16,7 @@ for item in data:
     languages_str = item.get("languages", "").strip()
     if languages_str:
         # Usa una expresión regular para dividir por espacios o comas, y limpia los resultados
-        languages_list = [lang.strip() for lang in re.split(r'[\s,]+', languages_str) if lang.strip()]
+        languages_list = [lang.strip().capitalize() for lang in re.split(r'[\s,]+', languages_str) if lang.strip()]
         item["languages"] = list(set(languages_list)) # Usa set para eliminar duplicados
     else:
         item["languages"] = []

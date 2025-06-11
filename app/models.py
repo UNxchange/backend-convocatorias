@@ -53,6 +53,27 @@ class Convocatoria(BaseModel):
     properties: Optional[str] = Field(None, validation_alias="Props")
     internationalLink: Optional[str] = None
 
+    # Normaliza el campo 'languages'
+    @field_validator("languages", mode="before")
+    def _capitalize_languages(cls, v):
+        """Asegura que cada idioma empiece en mayúscula y sin duplicados."""
+        if v is None:
+            return []
+        if isinstance(v, str):
+            # Permite que el cliente envíe un único string de idiomas
+            v = [v]
+        if not isinstance(v, list):
+            raise TypeError("languages debe ser una lista de strings")
+
+        clean: List[str] = []
+        for lang in v:
+            if not isinstance(lang, str):
+                raise TypeError("Cada idioma debe ser string")
+            capitalized = lang.strip().capitalize()
+            if capitalized and capitalized not in clean:
+                clean.append(capitalized)
+        return clean
+
     class Config:
         # allow_population_by_field_name es ahora el comportamiento por defecto y puede ser removido
         arbitrary_types_allowed = True
