@@ -15,14 +15,14 @@ Este microservicio implementa el CRUD de convocatorias de movilidad académica b
 
 - app/main.py → Entrada de la aplicación
 - app/models.py → Modelos de datos
-- app/db/mongodb.py → Conexión a MongoDB
+- app/database.py → Conexión a MongoDB
 - app/routes/convocatorias.py → Endpoints REST
-- app/services/convocatorias_service.py → Lógica de negocio
 
 ## ⚙ Configuración local
 
-1️⃣ Instalar dependencias:
+1️⃣ Instalar dependencias y ejecutar el servicio:
 
 ```bash
 pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
