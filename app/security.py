@@ -29,7 +29,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     Decodifica el token JWT y devuelve los datos del usuario (sub y rol).
     Esta dependencia ahora usa HTTPBearer.
     """
-    token =f'Bearer {credentials.credentials}'
+    token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudieron validar las credenciales",
