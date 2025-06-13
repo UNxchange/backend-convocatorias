@@ -3,3 +3,5 @@ uvicorn[standard]
 motor         # Driver asíncrono para MongoDB, recomendado para FastAPI
 pydantic[email]
 python-dotenv
+python-jose[cryptography]
+passlib[bcrypt]
