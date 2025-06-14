@@ -20,3 +20,9 @@
 ### Añadido
 
 - Carga de la base de datos en MongoDB
+
+## 2025 - 06 - 13
+
+### Añadido
+
+- Validación de roles y permisos sobre la base de datos de convocatorias

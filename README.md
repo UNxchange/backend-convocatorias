@@ -1,28 +1,64 @@
-# Microservicio Convocatorias - UnxChange
+# Backend Convocatorias
 
-Este microservicio implementa el CRUD de convocatorias de movilidad académica bajo arquitectura SOFEA.
+Servicio backend para la gestión de convocatorias, desarrollado con **FastAPI** y **MongoDB**.
 
-## 🚀 Tecnologías
+## Características
 
-- Python 3.12
-- FastAPI
-- MongoDB (NoSQL Documental)
-- Motor (Async MongoDB Driver)
-- Pydantic
-- Dotenv
+- API RESTful para crear, listar, actualizar y eliminar convocatorias.
+- Autenticación JWT.
+- Integración con MongoDB usando `motor`.
+- Validación de datos con Pydantic.
 
-## 📦 Estructura del Proyecto
+## Requisitos
 
-- app/main.py → Entrada de la aplicación
-- app/models.py → Modelos de datos
-- app/database.py → Conexión a MongoDB
-- app/routes/convocatorias.py → Endpoints REST
+- Python 3.8+
+- MongoDB (Atlas o local)
 
-## ⚙ Configuración local
+## Instalación
 
-1️⃣ Instalar dependencias y ejecutar el servicio:
+1. Clona el repositorio:
 
-```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+   ```sh
+   git clone <URL_DEL_REPOSITORIO>
+   cd backend-convocatorias
+   ```
+
+2. Crea un entorno virtual e instala dependencias:
+
+   ```sh
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+3. Configura las variables de entorno en un archivo `.env`:
+   ```env
+   MONGO_URI="mongodb+srv://<usuario>:<contraseña>@<cluster>.mongodb.net/?retryWrites=true&w=majority"
+   DATABASE_NAME="unxchange"
+   SECRET_KEY="clave_secreta"
+   ALGORITHM="HS256"
+   ```
+
+## Ejecución
+
+```sh
+uvicorn main:app --reload
+```
+
+La API estará disponible en [http://localhost:8000](http://localhost:8000).
+
+## Endpoints principales
+
+- `GET /convocatorias` — Lista todas las convocatorias.
+- `POST /convocatorias` — Crea una nueva convocatoria.
+- `GET /convocatorias/{id}` — Obtiene una convocatoria por ID.
+- `PUT /convocatorias/{id}` — Actualiza una convocatoria.
+- `DELETE /convocatorias/{id}` — Elimina una convocatoria.
+
+## Autenticación
+
+Algunos endpoints requieren autenticación JWT. Debes incluir el token en el header:
+
+```
+Authorization: Bearer <token>
 ```
