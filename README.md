@@ -19,7 +19,7 @@ Servicio backend para la gestión de convocatorias, desarrollado con **FastAPI**
 1. Clona el repositorio:
 
    ```sh
-   git clone <URL_DEL_REPOSITORIO>
+   git clone https://github.com/UNxchange/backend-convocatorias.git
    cd backend-convocatorias
    ```
 
@@ -62,3 +62,7 @@ Algunos endpoints requieren autenticación JWT. Debes incluir el token en el hea
 ```
 Authorization: Bearer <token>
 ```
+
+## Pruebas
+
+Para hacer pruebas de los endpoints se puede hacer por medio de swagger en http://localhost:8000/docs o usar herraminetas externas con la dirección del servidor: http://localhost:8000
