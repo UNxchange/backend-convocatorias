@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, field_validator
 from pydantic_core import core_schema
 from typing import List, Optional
 from bson import ObjectId
+from datetime import datetime
 
 # Helper para ObjectId - VERSIÓN CORREGIDA PARA PYDANTIC V2
 class PyObjectId(str):
@@ -34,6 +35,11 @@ class PyObjectId(str):
         if not ObjectId.is_valid(v):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
+# clase de estudiante interesado
+class UserInterest(BaseModel):
+    username: str
+    interestedAt: datetime = Field(default_factory=datetime.now)
+    notes: Optional[str] = None
 
 # Modelo principal de la Convocatoria
 class Convocatoria(BaseModel):
@@ -52,6 +58,8 @@ class Convocatoria(BaseModel):
     # 'alias' está bien aquí para el output, pero es bueno ser consistente
     properties: Optional[str] = Field(None, validation_alias="Props")
     internationalLink: Optional[str] = None
+    # agregar lista de estudiantes interesados
+    interestedUsers: List[str] = Field(default_factory=list, description="Lista de usernames de usuarios interesados")
 
     # Normaliza el campo 'languages'
     @field_validator("languages", mode="before")
@@ -108,7 +116,7 @@ class ConvocatoriaCreate(BaseModel):
     agreementLink: Optional[str] = None
     properties: Optional[str] = Field(None, alias="Props")
     internationalLink: Optional[str] = None
-    
+    interestedUsers: List[str] = Field(default_factory=list)
     # La configuración de alias ya no necesita 'allow_population_by_field_name'
     class Config:
         populate_by_name = True
@@ -128,6 +136,8 @@ class ConvocatoriaUpdate(BaseModel):
     agreementLink: Optional[str] = None
     properties: Optional[str] = Field(None, alias="Props")
     internationalLink: Optional[str] = None
+    interestedUsers: Optional[List[str]] = None
     
     class Config:
         populate_by_name = True
+
