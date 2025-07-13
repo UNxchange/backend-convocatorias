@@ -1,11 +1,18 @@
 from fastapi import APIRouter, HTTPException, Query, Body, status, Depends
 from typing import List, Optional
 from bson import ObjectId
+import sys
+import os
+
+# Agregar el directorio raíz al path para importar notification_client
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from ..models import Convocatoria, ConvocatoriaCreate, ConvocatoriaUpdate
 from ..database import get_convocatoria_collection
 # ¡NUEVO! Importamos nuestras dependencias de seguridad
 from ..security import get_current_user, require_admin_role, TokenData
+# Importamos el cliente de notificaciones
+from notification_client import notification_client
 
 router = APIRouter(
     prefix="/convocatorias",
@@ -108,8 +115,20 @@ async def express_interest(
 ):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="ID de convocatoria inválido")
+
+    if not current_user.sub:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado correctamente")
     
-    # Usar current_user.username en lugar de current_user.sub
+    # Obtener la convocatoria antes de actualizar
+    convocatoria = await collection.find_one({"_id": ObjectId(id)})
+    if not convocatoria:
+        raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+    
+    # Verificar si el usuario ya está interesado
+    if current_user.sub in convocatoria.get("interestedUsers", []):
+        return {"message": "El usuario ya había expresado interés en esta convocatoria"}
+    
+    # Registrar el interés
     result = await collection.update_one(
         {"_id": ObjectId(id)},
         {"$addToSet": {"interestedUsers": current_user.sub}}
@@ -117,6 +136,21 @@ async def express_interest(
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+    
+    # Enviar correo de confirmación de interés
+    try:
+        # Extraer el nombre del usuario del email (parte antes del @)
+        username = current_user.sub.split('@')[0]
+        
+        await notification_client.send_interest_confirmation_email(
+            user_email=current_user.sub,
+            username=username,
+            convocatoria_data=convocatoria
+        )
+        print(f"✅ Correo de confirmación de interés enviado a {current_user.sub}")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de confirmación: {e}")
+        # No fallar la operación si hay problemas con las notificaciones
     
     return {"message": "Interés registrado exitosamente"}
 
@@ -129,7 +163,19 @@ async def remove_interest(
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="ID de convocatoria inválido")
     
-    # Mantener consistencia usando username
+    if not current_user.sub:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado correctamente")
+    
+    # Obtener la convocatoria antes de actualizar
+    convocatoria = await collection.find_one({"_id": ObjectId(id)})
+    if not convocatoria:
+        raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+    
+    # Verificar si el usuario tenía interés registrado
+    if current_user.sub not in convocatoria.get("interestedUsers", []):
+        return {"message": "El usuario no tenía interés registrado en esta convocatoria"}
+    
+    # Remover el interés
     result = await collection.update_one(
         {"_id": ObjectId(id)},
         {"$pull": {"interestedUsers": current_user.sub}}
@@ -137,5 +183,20 @@ async def remove_interest(
     
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail=f"Convocatoria con id {id} no encontrada")
+    
+    # Enviar correo de confirmación de remoción de interés
+    try:
+        # Extraer el nombre del usuario del email (parte antes del @)
+        username = current_user.sub.split('@')[0]
+        
+        await notification_client.send_interest_removal_email(
+            user_email=current_user.sub,
+            username=username,
+            convocatoria_data=convocatoria
+        )
+        print(f"✅ Correo de confirmación de remoción de interés enviado a {current_user.sub}")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de confirmación: {e}")
+        # No fallar la operación si hay problemas con las notificaciones
     
     return {"message": "Interés removido exitosamente"}

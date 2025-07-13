@@ -1,4 +1,0 @@
-from app.security import get_current_user
-
-
-get_current_user("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYW51ZWxAZXhhbXBsZS5jb20iLCJyb2xlIjoiYWRtaW5pc3RyYWRvciIsImV4cCI6MTc0OTc4ODMwM30.GKIQ2jB89yvX3BQ3leWz7ICLGUQc-EocKxCrXyXqBe8")
