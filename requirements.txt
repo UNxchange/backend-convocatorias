@@ -8,3 +8,10 @@ passlib[bcrypt]
 httpx         # Cliente HTTP asíncrono para notificaciones
 typing_extensions  # Extensiones de tipado requeridas por pydantic
 pymongo       # Driver de MongoDB (requerido por motor)
+pytest
+pytest-asyncio
+anyio
+pytest-asyncio
+pytest-tornasync
+pytest-trio
+pytest-twisted
