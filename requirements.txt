@@ -5,3 +5,10 @@ pydantic[email]
 python-dotenv
 python-jose[cryptography]
 passlib[bcrypt]
+pytest
+pytest-asyncio
+anyio
+pytest-asyncio
+pytest-tornasync
+pytest-trio
+pytest-twisted
