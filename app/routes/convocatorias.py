@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from ..models import Convocatoria, ConvocatoriaCreate, ConvocatoriaUpdate
 from ..database import get_convocatoria_collection
 # ¡NUEVO! Importamos nuestras dependencias de seguridad
-from ..security import get_current_user, require_admin_role, TokenData
+from ..security import get_current_user, require_admin_or_pro_role, require_admin_role, TokenData
 # Importamos el cliente de notificaciones
 from notification_client import notification_client
 
@@ -27,7 +27,7 @@ collection = get_convocatoria_collection()
 @router.post("/", response_model=Convocatoria, status_code=status.HTTP_201_CREATED)
 async def create_convocatoria(
     convocatoria: ConvocatoriaCreate = Body(...),
-    current_user: TokenData = Depends(require_admin_role) # <-- Dependencia de administrador
+    current_user: TokenData = Depends(require_admin_or_pro_role) # <-- Dependencia de administrador
 ):
     convocatoria_dict = convocatoria.dict(by_alias=True)
     result = await collection.insert_one(convocatoria_dict)

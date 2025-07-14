@@ -58,3 +58,14 @@ async def require_admin_role(current_user: TokenData = Depends(get_current_user)
             detail="No tiene permisos para realizar esta acción. Se requiere rol de administrador.",
         )
     return current_user
+
+async def require_admin_or_pro_role(current_user: TokenData = Depends(get_current_user)):
+    """
+    Verifica que el usuario autenticado tenga el rol de "administrador" o "profesional".
+    """
+    if current_user.role not in ["administrador", "profesional"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tiene permisos para realizar esta acción. Se requiere rol de administrador o profesional.",
+        )
+    return current_user
