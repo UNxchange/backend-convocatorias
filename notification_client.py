@@ -8,7 +8,7 @@ load_dotenv()
 
 class NotificationClient:
     def __init__(self):
-        self.base_url = os.getenv("NOTIFICATIONS_SERVICE_URL", "http://localhost:8002")
+        self.base_url = os.getenv("NOTIFICATIONS_SERVICE_URL", "https://exchange-notifications-92ddb31a3e99.herokuapp.com")
         self.timeout = 30.0
     
     async def send_notification(self, notification_data: Dict[str, Any]) -> bool:
