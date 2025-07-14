@@ -44,7 +44,7 @@ async def get_convocatorias(
     state: Optional[str] = Query(None, description="Filtrar por estado..."),
     agreement_type: Optional[str] = Query(None, description="Filtrar por tipo de convenio"),
     subscription_level: Optional[str] = Query(None, description="Filtrar por nivel de suscripción"),
-    limit: int = Query(20, gt=0, le=200),
+    limit: int = Query(20, gt=0, le=800),
     skip: int = Query(0, ge=0),
     # Añadimos la dependencia de autenticación básica
     current_user: TokenData = Depends(get_current_user) # <-- Dependencia de usuario autenticado
