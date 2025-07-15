@@ -99,6 +99,41 @@ async def get_convocatorias_stats(
                     {"$unwind": "$languages"},
                     {"$group": {"_id": "$languages", "count": {"$sum": 1}}},
                     {"$sort": {"count": -1}}
+                ],
+                
+                # 5 países más populares (excluyendo Colombia)
+                "paises_populares": [
+                    {"$match": {"country": {"$not": {"$regex": "^Colombia$", "$options": "i"}}}},
+                    {"$group": {"_id": "$country", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}},
+                    {"$limit": 5}
+                ],
+                
+                # Convenios nacionales vs internacionales - SINTAXIS CORREGIDA
+                "distribucion_geografica": [
+                    {
+                        "$addFields": {
+                            "es_colombia": {
+                                "$regexMatch": {
+                                    "input": "$country",
+                                    "regex": "^Colombia$",
+                                    "options": "i"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$group": {
+                            "_id": {
+                                "$cond": [
+                                    "$es_colombia",
+                                    "Colombia",
+                                    "Internacional"
+                                ]
+                            },
+                            "count": {"$sum": 1}
+                        }
+                    }
                 ]
             }
         }
@@ -114,7 +149,9 @@ async def get_convocatorias_stats(
                 total_acuerdos_suscritos=0,
                 acuerdos_activos=0,
                 total_aplicaciones=0,
-                estadisticas_por_idioma={}
+                estadisticas_por_idioma={},
+                paises_mas_populares={},
+                convenios_nacionales_vs_internacionales={}
             )
         
         data = result[0]
@@ -131,11 +168,27 @@ async def get_convocatorias_stats(
             count = idioma_stat["count"]
             estadisticas_por_idioma[idioma] = count
         
+        # Procesar países más populares
+        paises_mas_populares = {}
+        for pais_stat in data["paises_populares"]:
+            pais = pais_stat["_id"]
+            count = pais_stat["count"]
+            paises_mas_populares[pais] = count
+        
+        # Procesar distribución geográfica
+        convenios_nacionales_vs_internacionales = {}
+        for geo_stat in data["distribucion_geografica"]:
+            tipo = geo_stat["_id"]
+            count = geo_stat["count"]
+            convenios_nacionales_vs_internacionales[tipo] = count
+        
         return ConvocatoriaStats(
             total_acuerdos_suscritos=total_acuerdos,
             acuerdos_activos=acuerdos_activos,
             total_aplicaciones=total_aplicaciones,
-            estadisticas_por_idioma=estadisticas_por_idioma
+            estadisticas_por_idioma=estadisticas_por_idioma,
+            paises_mas_populares=paises_mas_populares,
+            convenios_nacionales_vs_internacionales=convenios_nacionales_vs_internacionales
         )
         
     except Exception as e:

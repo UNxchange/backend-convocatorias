@@ -147,6 +147,8 @@ class ConvocatoriaStats(BaseModel):
     acuerdos_activos: int = Field(description="Acuerdos con estado 'Vigente'")
     total_aplicaciones: int = Field(description="Total de usuarios que han expresado interés")
     estadisticas_por_idioma: dict = Field(description="Conteo de convocatorias por idioma")
+    paises_mas_populares: dict = Field(description="Top 5 países más populares (sin Colombia)")
+    convenios_nacionales_vs_internacionales: dict = Field(description="Convenios en Colombia vs otros países")
     
     class Config:
         json_schema_extra = {
@@ -159,6 +161,17 @@ class ConvocatoriaStats(BaseModel):
                     "Español": 60,
                     "Alemán": 25,
                     "Francés": 15
+                },
+                "paises_mas_populares": {
+                    "España": 25,
+                    "México": 18,
+                    "Argentina": 15,
+                    "Francia": 12,
+                    "Alemania": 10
+                },
+                "convenios_nacionales_vs_internacionales": {
+                    "Colombia": 45,
+                    "Internacional": 105
                 }
             }
         }
