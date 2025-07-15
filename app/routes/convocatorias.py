@@ -7,7 +7,7 @@ import os
 # Agregar el directorio raíz al path para importar notification_client
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from ..models import Convocatoria, ConvocatoriaCreate, ConvocatoriaUpdate
+from ..models import Convocatoria, ConvocatoriaCreate, ConvocatoriaStats, ConvocatoriaUpdate
 from ..database import get_convocatoria_collection
 # ¡NUEVO! Importamos nuestras dependencias de seguridad
 from ..security import get_current_user, require_admin_or_pro_role, require_admin_role, TokenData
@@ -61,6 +61,89 @@ async def get_convocatorias(
     cursor = collection.find(query).skip(skip).limit(limit)
     results = await cursor.to_list(length=limit)
     return results
+
+
+
+@router.get("/stats", response_model=ConvocatoriaStats)
+async def get_convocatorias_stats(
+    current_user: TokenData = Depends(require_admin_role)
+):
+    """
+    Obtiene estadísticas generales de las convocatorias.
+    Requiere autenticación.
+    """
+    
+    # Pipeline de agregación para obtener todas las estadísticas
+    pipeline = [
+        {
+            "$facet": {
+                # Total de acuerdos suscritos
+                "total_acuerdos": [
+                    {"$count": "count"}
+                ],
+                
+                # Acuerdos activos (estado "Vigente")
+                "acuerdos_activos": [
+                    {"$match": {"state": {"$regex": "^Vigente$", "$options": "i"}}},
+                    {"$count": "count"}
+                ],
+                
+                # Total de aplicaciones (suma de todos los interestedUsers)
+                "total_aplicaciones": [
+                    {"$project": {"aplicaciones_count": {"$size": {"$ifNull": ["$interestedUsers", []]}}}},
+                    {"$group": {"_id": None, "total": {"$sum": "$aplicaciones_count"}}}
+                ],
+                
+                # Estadísticas por idioma
+                "estadisticas_idiomas": [
+                    {"$unwind": "$languages"},
+                    {"$group": {"_id": "$languages", "count": {"$sum": 1}}},
+                    {"$sort": {"count": -1}}
+                ]
+            }
+        }
+    ]
+    
+    try:
+        # Ejecutar el pipeline de agregación
+        result = await collection.aggregate(pipeline).to_list(length=1)
+        
+        if not result:
+            # Si no hay datos, retornar estadísticas vacías
+            return ConvocatoriaStats(
+                total_acuerdos_suscritos=0,
+                acuerdos_activos=0,
+                total_aplicaciones=0,
+                estadisticas_por_idioma={}
+            )
+        
+        data = result[0]
+        
+        # Extraer datos de cada facet
+        total_acuerdos = data["total_acuerdos"][0]["count"] if data["total_acuerdos"] else 0
+        acuerdos_activos = data["acuerdos_activos"][0]["count"] if data["acuerdos_activos"] else 0
+        total_aplicaciones = data["total_aplicaciones"][0]["total"] if data["total_aplicaciones"] else 0
+        
+        # Procesar estadísticas por idioma
+        estadisticas_por_idioma = {}
+        for idioma_stat in data["estadisticas_idiomas"]:
+            idioma = idioma_stat["_id"]
+            count = idioma_stat["count"]
+            estadisticas_por_idioma[idioma] = count
+        
+        return ConvocatoriaStats(
+            total_acuerdos_suscritos=total_acuerdos,
+            acuerdos_activos=acuerdos_activos,
+            total_aplicaciones=total_aplicaciones,
+            estadisticas_por_idioma=estadisticas_por_idioma
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error al obtener estadísticas: {str(e)}"
+        )
+
 
 # GET por ID protegido para cualquier usuario autenticado
 @router.get("/{id}", response_model=Convocatoria)

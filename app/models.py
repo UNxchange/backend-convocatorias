@@ -141,3 +141,24 @@ class ConvocatoriaUpdate(BaseModel):
     class Config:
         populate_by_name = True
 
+# Modelo para estadísticas de convocatorias
+class ConvocatoriaStats(BaseModel):
+    total_acuerdos_suscritos: int = Field(description="Total de acuerdos suscritos")
+    acuerdos_activos: int = Field(description="Acuerdos con estado 'Vigente'")
+    total_aplicaciones: int = Field(description="Total de usuarios que han expresado interés")
+    estadisticas_por_idioma: dict = Field(description="Conteo de convocatorias por idioma")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "total_acuerdos_suscritos": 150,
+                "acuerdos_activos": 75,
+                "total_aplicaciones": 320,
+                "estadisticas_por_idioma": {
+                    "Inglés": 85,
+                    "Español": 60,
+                    "Alemán": 25,
+                    "Francés": 15
+                }
+            }
+        }
