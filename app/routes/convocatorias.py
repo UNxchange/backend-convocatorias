@@ -109,7 +109,7 @@ from bson import ObjectId
 from ..models import Convocatoria, ConvocatoriaCreate, ConvocatoriaUpdate
 from ..database import get_convocatoria_collection
 # ¡NUEVO! Importamos nuestras dependencias de seguridad
-from ..security import get_current_user, require_admin_role, TokenData
+from ..security import get_current_user, require_admin_role, require_admin_or_professional_role, TokenData
 
 router = APIRouter(
     prefix="/convocatorias",
@@ -120,18 +120,18 @@ collection = get_convocatoria_collection()
 
 # --- PROTECCIÓN DE ENDPOINTS ---
 
-# POST protegido solo para administradores
+# POST protegido para administradores y profesionales
 @router.post("/", response_model=Convocatoria, status_code=status.HTTP_201_CREATED)
 async def create_convocatoria(
     convocatoria: ConvocatoriaCreate = Body(...),
-    current_user: TokenData = Depends(require_admin_role) # <-- Dependencia de administrador
+    current_user: TokenData = Depends(require_admin_or_professional_role) # <-- Permite admin y profesional
 ):
     convocatoria_dict = convocatoria.dict(by_alias=True)
     result = await collection.insert_one(convocatoria_dict)
     new_convocatoria = await collection.find_one({"_id": result.inserted_id})
     return new_convocatoria
 
-# GET protegido para cualquier usuario autenticado
+# GET SIN PROTECCIÓN TEMPORAL - SOLO PARA PRUEBAS
 @router.get("/", response_model=List[Convocatoria])
 async def get_convocatorias(
     # ... (todos los parámetros de query como antes)
@@ -143,8 +143,8 @@ async def get_convocatorias(
     subscription_level: Optional[str] = Query(None, description="Filtrar por nivel de suscripción"),
     limit: int = Query(20, gt=0, le=200),
     skip: int = Query(0, ge=0),
-    # Añadimos la dependencia de autenticación básica
-    current_user: TokenData = Depends(get_current_user) # <-- Dependencia de usuario autenticado
+    # AUTENTICACIÓN DESACTIVADA TEMPORALMENTE PARA PRUEBAS
+    # current_user: TokenData = Depends(get_current_user) # <-- Dependencia comentada
 ):
     query = {}
     # ... (la lógica de construcción de la query no cambia)
@@ -159,11 +159,12 @@ async def get_convocatorias(
     results = await cursor.to_list(length=limit)
     return results
 
-# GET por ID protegido para cualquier usuario autenticado
+# GET por ID SIN PROTECCIÓN TEMPORAL - SOLO PARA PRUEBAS
 @router.get("/{id}", response_model=Convocatoria)
 async def get_convocatoria_by_id(
     id: str,
-    current_user: TokenData = Depends(get_current_user) # <-- Dependencia de usuario autenticado
+    # AUTENTICACIÓN DESACTIVADA TEMPORALMENTE PARA PRUEBAS
+    # current_user: TokenData = Depends(get_current_user) # <-- Dependencia comentada
 ):
     if not ObjectId.is_valid(id):
         raise HTTPException(status_code=400, detail="ID de convocatoria inválido")

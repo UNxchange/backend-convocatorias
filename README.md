@@ -45,7 +45,7 @@ Servicio backend para la gestión de convocatorias, desarrollado con **FastAPI**
 uvicorn main:app --reload
 ```
 
-La API estará disponible en [http://localhost:8000](http://localhost:8000).
+La API estará disponible en [http://localhost:8008](http://localhost:8008).
 
 ## Endpoints principales
 
@@ -65,4 +65,4 @@ Authorization: Bearer <token>
 
 ## Pruebas
 
-Para hacer pruebas de los endpoints se puede hacer por medio de swagger en http://localhost:8000/docs o usar herraminetas externas con la dirección del servidor: http://localhost:8000
+Para hacer pruebas de los endpoints se puede hacer por medio de swagger en http://localhost:8008/docs o usar herraminetas externas con la dirección del servidor: http://localhost:8008
