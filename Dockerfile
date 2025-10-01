@@ -1,33 +1,44 @@
-# Dockerfile robusto para backend-convocatorias
-FROM python:3.12-slim
+# Dockerfile para Backend Convocatorias Service
+FROM python:3.11-slim
 
-# Configurar variables de entorno para pip
-ENV PIP_DEFAULT_TIMEOUT=100
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV PIP_NO_CACHE_DIR=1
+# Configurar variables de entorno
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
 
-# Instalar dependencias del sistema con reintentos
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Establecer el directorio de trabajo
-WORKDIR /app
-
-# Copiar el archivo de requisitos
+# Copiar archivos de dependencias
 COPY requirements.txt .
+COPY requirements-pinned.txt* ./
 
-# Actualizar pip e instalar dependencias con múltiples estrategias de reintento
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --retries 10 --timeout 120 --no-cache-dir -r requirements.txt || \
-    (sleep 10 && pip install --retries 5 --timeout 60 --no-cache-dir -r requirements.txt) || \
-    (sleep 20 && pip install --no-deps --no-cache-dir -r requirements.txt)
+# Actualizar pip e instalar dependencias de Python
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar el código de la aplicación
-COPY . .
+# Copiar código fuente
+COPY app/ ./app/
+COPY .env* ./
 
-# Exponer el puerto
+# Crear usuario no-root para mayor seguridad
+RUN useradd --create-home --shell /bin/bash convocatorias
+RUN chown -R convocatorias:convocatorias /app
+USER convocatorias
+
+# Exponer puerto del servicio
 EXPOSE 8002
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8002/ || exit 1
+
 # Comando para ejecutar la aplicación
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--workers", "1"]

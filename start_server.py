@@ -11,15 +11,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == "__main__":
     print("🚀 Iniciando Backend de Convocatorias UnxChange...")
-    print("📍 Puerto: 8008")
-    print("🔗 URL: http://localhost:8008")
-    print("📚 Documentación: http://localhost:8008/docs")
+    print("📍 Puerto: 8002")
+    print("🔗 URL: http://localhost:8002")
+    print("📚 Documentación: http://localhost:8002/docs")
     print("=" * 50)
     
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8008,
+        port=8002,
         reload=False,  # Desactivar recarga automática para mayor estabilidad
         log_level="info"
     )

@@ -35,44 +35,60 @@ class PyObjectId(str):
             raise ValueError("Invalid ObjectId")
         return ObjectId(v)
 
-# Modelo principal de la Convocatoria
+# Modelo principal de la Convocatoria - Actualizado para coincidir con los datos reales
 class Convocatoria(BaseModel):
     # El Field ahora debe usar 'validation_alias' en lugar de 'alias' para la conversión de BSON
     id: PyObjectId = Field(default_factory=PyObjectId, validation_alias="_id")
-    subscriptionYear: str
-    country: str
-    institution: str
-    agreementType: str
-    validity: str
-    state: str
-    subscriptionLevel: str
-    languages: List[str] = []
-    dreLink: Optional[str] = None
+    
+    # Mapeo de campos reales de la BD a campos esperados por el frontend
+    subscriptionYear: str = Field(validation_alias="fecha_creacion", default="2024")
+    country: str = Field(validation_alias="pais_destino")
+    institution: str = Field(validation_alias="universidad_destino")
+    agreementType: str = Field(validation_alias="tipo_intercambio", default="Intercambio")
+    validity: str = Field(validation_alias="fecha_fin", default="Vigente")
+    state: str = Field(validation_alias="estado", default="Activa")
+    subscriptionLevel: str = Field(validation_alias="programa", default="Universidad Nacional")
+    languages: List[str] = Field(validation_alias="nivel_idioma", default=[])
+    dreLink: Optional[str] = Field(None, validation_alias="contacto")
     agreementLink: Optional[str] = None
     # 'alias' está bien aquí para el output, pero es bueno ser consistente
-    properties: Optional[str] = Field(None, validation_alias="Props")
+    properties: Optional[str] = Field(None, validation_alias="descripcion")
     internationalLink: Optional[str] = None
 
-    # Normaliza el campo 'languages'
+    # Normaliza el campo 'languages' 
     @field_validator("languages", mode="before")
-    def _capitalize_languages(cls, v):
-        """Asegura que cada idioma empiece en mayúscula y sin duplicados."""
+    def _normalize_languages(cls, v):
+        """Convierte nivel_idioma en una lista de idiomas."""
         if v is None:
             return []
         if isinstance(v, str):
-            # Permite que el cliente envíe un único string de idiomas
-            v = [v]
-        if not isinstance(v, list):
-            raise TypeError("languages debe ser una lista de strings")
-
-        clean: List[str] = []
-        for lang in v:
-            if not isinstance(lang, str):
-                raise TypeError("Cada idioma debe ser string")
-            capitalized = lang.strip().capitalize()
-            if capitalized and capitalized not in clean:
-                clean.append(capitalized)
-        return clean
+            # Si es un string como "Intermedio", convertirlo en una lista
+            return [v.capitalize()]
+        if isinstance(v, list):
+            return [str(lang).capitalize() for lang in v]
+        return []
+    
+    # Normaliza el campo 'validity'
+    @field_validator("validity", mode="before") 
+    def _normalize_validity(cls, v):
+        """Convierte fecha_fin en un string de validez."""
+        if v is None:
+            return "Vigente"
+        if hasattr(v, 'strftime'):
+            # Si es un datetime, convertirlo a string
+            return v.strftime("%B %Y")
+        return str(v)
+    
+    # Normaliza el campo 'subscriptionYear'
+    @field_validator("subscriptionYear", mode="before")
+    def _normalize_subscription_year(cls, v):
+        """Extrae el año de fecha_creacion."""
+        if v is None:
+            return "2024"
+        if hasattr(v, 'year'):
+            # Si es un datetime, extraer el año
+            return str(v.year)
+        return str(v)
 
     class Config:
         # allow_population_by_field_name es ahora el comportamiento por defecto y puede ser removido
