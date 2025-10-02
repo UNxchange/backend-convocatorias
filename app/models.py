@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core import core_schema
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from bson import ObjectId
 
 # Helper para ObjectId - VERSIÓN CORREGIDA PARA PYDANTIC V2
@@ -40,55 +40,77 @@ class Convocatoria(BaseModel):
     # El Field ahora debe usar 'validation_alias' en lugar de 'alias' para la conversión de BSON
     id: PyObjectId = Field(default_factory=PyObjectId, validation_alias="_id")
     
-    # Mapeo de campos reales de la BD a campos esperados por el frontend
-    subscriptionYear: str = Field(validation_alias="fecha_creacion", default="2024")
-    country: str = Field(validation_alias="pais_destino")
-    institution: str = Field(validation_alias="universidad_destino")
-    agreementType: str = Field(validation_alias="tipo_intercambio", default="Intercambio")
-    validity: str = Field(validation_alias="fecha_fin", default="Vigente")
-    state: str = Field(validation_alias="estado", default="Activa")
-    subscriptionLevel: str = Field(validation_alias="programa", default="Universidad Nacional")
-    languages: List[str] = Field(validation_alias="nivel_idioma", default=[])
-    dreLink: Optional[str] = Field(None, validation_alias="contacto")
+    # Campos directos sin alias (MongoDB guarda con nombres en inglés)
+    subscriptionYear: str = "2024"
+    country: str
+    institution: str
+    agreementType: str = "Intercambio"
+    validity: str = "Vigente"
+    state: str = "Activa"
+    subscriptionLevel: str = "Universidad Nacional"
+    languages: List[str] = []
+    dreLink: Optional[str] = None
     agreementLink: Optional[str] = None
-    # 'alias' está bien aquí para el output, pero es bueno ser consistente
-    properties: Optional[str] = Field(None, validation_alias="descripcion")
+    properties: Optional[str] = Field(None, alias="Props")
     internationalLink: Optional[str] = None
-
+    
+    # Validador que mapea campos en español a inglés (compatibilidad con datos viejos)
+    @model_validator(mode='before')
+    @classmethod
+    def map_spanish_fields(cls, data: Any) -> Any:
+        """Mapea campos en español a inglés para compatibilidad con datos legacy."""
+        if not isinstance(data, dict):
+            return data
+        
+        # Mapeo de campos
+        field_mapping = {
+            'pais_destino': 'country',
+            'universidad_destino': 'institution',
+            'tipo_intercambio': 'agreementType',
+            'estado': 'state',
+            'programa': 'subscriptionLevel',
+            'nivel_idioma': 'languages',
+            'contacto': 'dreLink',
+            'descripcion': 'properties',
+        }
+        
+        # Aplicar mapeos solo si el campo en inglés no existe
+        for spanish_field, english_field in field_mapping.items():
+            if spanish_field in data and english_field not in data:
+                data[english_field] = data[spanish_field]
+        
+        # Manejar fecha_creacion -> subscriptionYear
+        if 'fecha_creacion' in data and 'subscriptionYear' not in data:
+            fecha = data['fecha_creacion']
+            if hasattr(fecha, 'year'):
+                data['subscriptionYear'] = str(fecha.year)
+        
+        # Manejar fecha_fin -> validity
+        if 'fecha_fin' in data and 'validity' not in data:
+            fecha = data['fecha_fin']
+            if hasattr(fecha, 'strftime'):
+                data['validity'] = fecha.strftime("%B %Y")
+            elif isinstance(fecha, str):
+                data['validity'] = fecha
+        
+        return data
+        if hasattr(values, 'data') and 'descripcion' in values.data:
+            return values.data['descripcion']
+        return None
+    
     # Normaliza el campo 'languages' 
     @field_validator("languages", mode="before")
     def _normalize_languages(cls, v):
-        """Convierte nivel_idioma en una lista de idiomas."""
-        if v is None:
+        """Convierte el campo languages en una lista normalizada."""
+        if v is None or v == []:
             return []
         if isinstance(v, str):
-            # Si es un string como "Intermedio", convertirlo en una lista
+            # Si es un string, convertirlo a lista
             return [v.capitalize()]
         if isinstance(v, list):
-            return [str(lang).capitalize() for lang in v]
+            # Si es una lista, normalizar cada elemento
+            return [str(lang).capitalize() for lang in v if lang]
         return []
-    
-    # Normaliza el campo 'validity'
-    @field_validator("validity", mode="before") 
-    def _normalize_validity(cls, v):
-        """Convierte fecha_fin en un string de validez."""
-        if v is None:
-            return "Vigente"
-        if hasattr(v, 'strftime'):
-            # Si es un datetime, convertirlo a string
-            return v.strftime("%B %Y")
-        return str(v)
-    
-    # Normaliza el campo 'subscriptionYear'
-    @field_validator("subscriptionYear", mode="before")
-    def _normalize_subscription_year(cls, v):
-        """Extrae el año de fecha_creacion."""
-        if v is None:
-            return "2024"
-        if hasattr(v, 'year'):
-            # Si es un datetime, extraer el año
-            return str(v.year)
-        return str(v)
 
     class Config:
         # allow_population_by_field_name es ahora el comportamiento por defecto y puede ser removido
