@@ -10,19 +10,13 @@ app = FastAPI(
 
 # Configuración de CORS para permitir que el frontend se conecte
 # Para producción, es mejor restringir los orígenes
-origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost",
-        "http://localhost:80",
-        "http://localhost:3000",
-        "http://localhost:8080",
-    ],  # Orígenes específicos en lugar de "*"
-    allow_credentials=True,  # Permitir credenciales
+    allow_origins=["*"],  # Permitir todos los orígenes en desarrollo
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Incluir las rutas del módulo de convocatorias
